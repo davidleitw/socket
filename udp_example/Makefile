@@ -7,3 +7,4 @@ us:
 	gcc -o us udp_server.c
 clean:
 	rm uc us
+	clear

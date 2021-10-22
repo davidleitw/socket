@@ -8,42 +8,37 @@
 #include <netinet/in.h>
 
 int main(int argc , char *argv[])
-
 {
-    int socket_fd = 0;
-    socket_fd = socket(AF_INET , SOCK_DGRAM , 0);
-
+    char buf[1024] = {0};
+    
+    int socket_fd = socket(AF_INET , SOCK_DGRAM , 0);
     if (socket_fd < 0){
         printf("Fail to create a socket.");
     }
 
     //socket的連線
-    struct sockaddr_in socketSocket;
-    // bzero(&socketSocket,sizeof(socketSocket));
-
-    socketSocket.sin_family = PF_INET;
-    socketSocket.sin_addr.s_addr = INADDR_ANY;
-    socketSocket.sin_port = htons(12000);
-    int ret = bind(socket_fd, (const struct sockaddr *)&socketSocket, sizeof(socketSocket));
+    struct sockaddr_in serverAddr = {
+        .sin_family = PF_INET,
+        .sin_addr.s_addr = INADDR_ANY,
+        .sin_port = htons(12000)
+    };
+    struct sockaddr_in clientAddr;
+    int len = sizeof(clientAddr);
     
-    if (ret < 0) {
+    
+    if (bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
         perror("Bind socket failed!");
         close(socket_fd);
     }
     
-    printf("Server ready!");
+    printf("Server ready!\n");
 
-    struct sockaddr_in src;
-    size_t len = sizeof(src);
-    char buf[1024] = {0};
-    
     while (1) {
-        ret = recvfrom(socket_fd, buf, sizeof(buf), 0, (struct sockaddr *)&src, &len);
-        if (ret < 0) {
+        if (recvfrom(socket_fd, buf, sizeof(buf), 0, (struct sockaddr *)&clientAddr, &len) < 0) {
             break;
         }
 
-        printf("get message from [%s:%d]: ", inet_ntoa(src.sin_addr), ntohs(src.sin_port));
+        printf("get message from [%s:%d]: ", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
         printf("%s\n", buf);
 
         if (strcmp(buf, "exit") == 0) {

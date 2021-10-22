@@ -36,8 +36,29 @@ int socket(int domain, int type, int protocol)
 
 ### **Return Value**
 
+成功建立 `socket` 之後，此函式會返回該 `socket` 的**檔案描述符**(`socket file descriptor`)，在之後的操作可以透過這個回傳值來操作我們建立的 `socket`。 如果建立失敗則會回傳 `-1(INVALID_SOCKET)`
 
+### 建立 socket example
 
+```c
+#include <stdio.h>
+#include <sys/socket.h>
+
+int main() {
+    // AF_INET = IPv4
+    // SOCK_DGRAM = UDP
+    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    // 檢查是否建立成功
+    if (socket_fd < 0) {
+        printf("Fail to create a socket.");
+    }
+    
+    // 根據 socker_fd 關閉剛剛創立的 socket
+    close(socket_fd);
+    return 0;
+}
+```
 
 ### 參考書籍
 

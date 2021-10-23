@@ -1,9 +1,10 @@
-.PHONY: uc, us
+.PHONY: all
 
-all: uc us
-uc: 
+all: udp_client udp_server
+
+udp_client: 
 	gcc -o uc udp_client.c
-us: 
+udp_server: 
 	gcc -o us udp_server.c
 clean:
 	rm uc us

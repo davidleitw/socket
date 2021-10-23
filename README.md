@@ -153,6 +153,7 @@ bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
 一般來說，`address` 的實際數值都會用 `in_addr` 或者 `in_addr_t` 來表示
 其本質就是 `uint32_t`，用總共 32 個 `bits` 來表示一個 `IPv4` 的地址
+
 ```c
 typedef uint32_t in_addr_t; // 4 byte
 struct in_addr {
@@ -183,6 +184,7 @@ in_addr_t inet_addr(const char *cp)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
+
 **回傳**: 假如輸入的地址合法，會回傳 `uint32_t` 的數值，若不合法則回傳 `INADDR_NONE`
 
 > INADDR_NODE = 0xFFFFFFFF (32 個 bits 全部填一)
@@ -196,6 +198,7 @@ int inet_aton(const char *string, struct in_addr *addr)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
+
 **回傳**: 轉換成功，會回傳一個非零的值，失敗則會回傳 `0`
 
 [範例程式: inet_aton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_aton_ex.c)
@@ -207,6 +210,7 @@ char *inet_ntoa(struct in_addr)
 ```
 
 **功能**: 將 `in_addr` 轉換成字串形式的 `ip address`
+
 **回傳**: 如果沒有錯誤，會傳回成功轉換的字串，失敗時則會回傳 `NULL`
 
 [範例程式: inet_ntoa_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntoa_ex.c)
@@ -241,6 +245,7 @@ int main()
 ```
 
 [inet_pton man page](https://man7.org/linux/man-pages/man3/inet_pton.3.html)
+
 [inet_ntop man page](https://man7.org/linux/man-pages/man3/inet_ntop.3.html)
 
 [範例程式碼 inet_ntop_pton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntop_pton_ex.c)

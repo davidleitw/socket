@@ -9,7 +9,7 @@ iaton:
 	gcc -o inet_aton_example inet_aton_ex.c
 
 intoa:
-	gcc -o inet_ntoa_example inet_aton_ex.c
+	gcc -o inet_ntoa_example inet_ntoa_ex.c
 
 ntop_pton:
 	gcc -o inet_ntop_pton_example inet_ntop_pton_ex.c

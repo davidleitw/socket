@@ -16,5 +16,11 @@ int main()
     struct in_addr na = {
         .s_addr = naddr1,
     };
-    printf("%s\n", inet_ntoa(na));
+
+    if (inet_ntoa(na) != NULL) {
+        printf("%s\n", inet_ntoa(na));
+    } else {
+        printf("inet_ntoa failed!\n");
+    }
+    
 }

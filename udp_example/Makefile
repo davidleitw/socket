@@ -3,9 +3,9 @@
 all: udp_client udp_server
 
 udp_client: 
-	gcc -o uc udp_client.c
+	gcc -o udp_client udp_client.c
 udp_server: 
-	gcc -o us udp_server.c
+	gcc -o udp_server udp_server.c
 clean:
-	rm uc us
+	rm udp_client udp_server
 	clear

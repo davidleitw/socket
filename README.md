@@ -8,13 +8,19 @@
 
 ![](https://i.imgur.com/gXp0tLh.png)
 
+在寫 `socket` 相關的程式的時候，需要先
+
+```c
+#include <sys/socket.h>
+```
+
 ## socket
 
 ```c
 int socket(int domain, int type, int protocol)
 ```
 
-### **domain**
+#### *domain*
 定義要建立哪一種類型的 `socket`，常用的有以下幾種類型
 - **AF_UNIX**, **AF_LOCAL**: 用於本機間 `process` 的溝通   
 - **AF_INET**, **AF_INET6**
@@ -23,20 +29,20 @@ int socket(int domain, int type, int protocol)
 
 詳細的選項可以參考 `socket` 的 [man page](https://man7.org/linux/man-pages/man2/socket.2.html)
 
-### **type**
+#### *type*
 `socket` 傳輸資料的手段(`communication semantics`)
 
 - **SOCK_STREAM**: 對應到 `tcp` 協定
 - **SOCK_DGRAM**: 對應到 `udp` 協定
 
-### **protocol**
+#### *protocol*
 設定通訊協定的號碼，通常在寫的時候會填入 `0`，`kernel` 會根據上面的兩個參數自動選擇合適的協定。
 
 [protocol man page](https://man7.org/linux/man-pages/man5/protocols.5.html#top_of_page)
 
 `/etc/protocols` 可以看到 `linux` 底下支援的協定
 
-### **Return Value**
+#### *Return Value*
 
 成功建立 `socket` 之後，此函式會返回該 `socket` 的**檔案描述符**(`socket file descriptor`)，在之後的操作可以透過這個回傳值來操作我們建立的 `socket`。 如果建立失敗則會回傳 `-1(INVALID_SOCKET)`
 
@@ -257,11 +263,11 @@ int main()
 int bind(int sockfd, struct sockaddr *addr, unsigned int addrlen)
 ```
 
-### *sockfd*
+#### *sockfd*
 
 一開始呼叫 `socket()` 的回傳值
 
-### *addr*
+#### *addr*
 
 `sockaddr` 來描述 `bind` 要綁定的 `address` 還有 `port`。
 
@@ -269,19 +275,19 @@ int bind(int sockfd, struct sockaddr *addr, unsigned int addrlen)
 
 [INADDR_ANY 參考](https://blog.csdn.net/qq_26399665/article/details/52932755)
 
-### *addrlen*
+#### *addrlen*
 
 `addr` 結構的 `size`
 
-### *return*
+#### *return*
 
 如果綁定成功就會回傳 `0`，失敗回傳 `-1`
 
-#### example
+### example
 ```c
 // 建立 socket, 並且取得 socket_fd
 int socket_fd = socket(PF_INET , SOCK_DGRAM , 0);
-if (socket_fd < 0){
+if (socket_fd < 0) {
     printf("Fail to create a socket.");
 }
     
@@ -305,6 +311,226 @@ if (bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 
 
 printf("Server ready!\n");
 ```
+
+## UDP
+
+接下來就要開始編寫我們的第一支 `socket` 程式，`client` 端輸入小寫的英文字串，`server` 端接收到字串後，將其改成大寫並且送回給 `client` 端。 我們一開始將會透過 `UDP` 協定來實現這個任務。
+
+`UDP` 是一種輕量化的協定，只會提供最低限度的服務，跟 `TCP` 相比，`UDP` 是**非連線導向**的協定，兩個 `process` 之間的溝通並不會事先握手，就像下圖所示，`UDP` 的 `client` 端只會接到指令之後送出，並不會在意對方是否有接收到資料，所以又被稱為 **不可靠的資料傳輸**。
+
+![](https://i.imgur.com/B3WjLDE.png)
+
+![](https://i.imgur.com/Sh21hzp.png)
+
+
+在 `socket` 的 `api` 中，負責 `UDP` 傳送以及接收的 `function` 是 `sendto()`, `recvfrom()`。 因為 `UDP` 協定不需要事先連線，所以只需要有目標 `ip address` 跟 `port` 即可。
+
+### sendto
+
+[sendto(2) - Linux man page](https://linux.die.net/man/2/sendto)
+
+```c
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+               const struct sockaddr *dest_addr, socklen_t addrlen);
+```
+
+#### *sockfd*
+
+`socket` 的文件描述符
+
+#### *buf*
+
+資料本體
+
+#### *len*
+
+資料長度
+
+#### *flags*
+
+一般填入 `0`，想知道詳細參數意義可以參考 [man page](https://linux.die.net/man/2/sendto)
+
+#### *dest_addr*
+
+目標位置相關資訊
+
+#### *addrlen*
+
+`dest_addr` 的 `size`
+
+#### *return value*
+
+傳送成功時回傳具體傳送成功的 `byte` 數，傳送失敗時會回傳 `-1`
+並且把錯誤訊息存進 [errno](https://man7.org/linux/man-pages/man3/errno.3.html)
+
+### recvfrom
+
+[recvfrom(2) - Linux man page](https://linux.die.net/man/2/recvfrom)
+
+```c
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+                 struct sockaddr *src_addr, socklen_t *addrlen);
+```
+
+#### *sockfd*
+
+`socket` 的文件描述符
+
+#### *buf*
+
+接收資料的 `buffer`
+
+#### *len*
+
+資料長度
+
+#### *flags*
+
+一般填入 `0`，想知道詳細參數意義可以參考 [man page](https://linux.die.net/man/2/recvfrom)
+
+#### *src_addr*
+
+資料來源地址，收到訊息之後我們可以一併收到來源地址，透過 `src_addr`，我們才能順利的把處理完的資料發回。
+
+#### *addrlen*
+
+`src_addr` 的 `size`
+
+#### *return value*
+
+接收成功時回傳具體接收成功的 `byte` 數，傳送失敗時會回傳 `-1`
+並且把錯誤訊息存進 [errno](https://man7.org/linux/man-pages/man3/errno.3.html)
+
+### demo
+
+![](https://i.imgur.com/sxPuuic.png)
+
+#### sever example
+
+```c
+#define serverPort 48763
+
+// message buffer
+char buf[1024] = {0};
+
+// 建立 socket
+int socket_fd = socket(PF_INET , SOCK_DGRAM , 0);
+if (socket_fd < 0){
+    printf("Fail to create a socket.");
+}
+
+// server 地址
+struct sockaddr_in serverAddr = {
+    .sin_family =AF_INET           
+    .sin_addr.s_addr = INADDR_ANY,
+    .sin_port = htons(serverPort)
+};
+
+// 將建立的 socket 綁定到 serverAddr 指定的 port
+if (bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+    perror("Bind socket failed!");
+    close(socket_fd);
+    exit(0);
+}
+
+struct sockaddr_in clientAddr;
+int len = sizeof(clientAddr);
+while (1) {
+    // 當有人使用 UDP 協定送資料到 48763 port
+    // 會觸發 recvfrom()，並且把來源資料寫入 clientAddr 當中
+    if (recvfrom(socket_fd, buf, sizeof(buf), 0, (struct sockaddr *)&clientAddr, &len) < 0) {
+        break;
+    }
+    
+    // 收到 exit 指令就關閉 server
+    if (strcmp(buf, "exit") == 0) {
+        printf("get exit order, closing the server...\n");
+        break;
+    }
+    
+    // 將收到的英文字母換成大寫
+    char *conv = convert(buf);
+    // 顯示資料來源，原本資料，以及修改後的資料
+    printf("get message from [%s:%d]: ", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+    printf("%s -> %s\n", buf, conv);
+    
+    // 根據 clientAddr 的資訊，回傳至 client 端
+    sendto(socket_fd, conv, sizeof(conv), 0, (struct sockaddr *)&clientAddr, sizeof(clientAddr));
+    
+    // 清空 message buffer
+    memset(buf, 0, sizeof(buf));
+    free(conv);
+}
+
+// 關閉 socket，並檢查是否關閉成功
+if (close(socket_fd) < 0) {
+        perror("close socket failed!");
+}
+```
+
+#### client example
+
+```c
+#define serverPort 48763
+
+// message buffer
+char buf[1024] = {0};
+char recvbuf[1024] = {0};
+
+// 建立 socket
+int socket_fd = socket(PF_INET, SOCK_DGRAM, 0);
+if (socket_fd < 0) {
+    printf("Create socket fail!\n");
+    return -1;
+}
+
+// server 地址
+struct sockaddr_in serverAddr = {
+    .sin_family = AF_INET,
+    .sin_addr.s_addr = inet_addr(serverIP),
+    .sin_port = htons(serverPort)
+};
+int len = sizeof(serverAddr);
+
+while (1) {
+    // 輸入資料到 buffer
+    printf("Please input your message: ");
+    scanf("%s", buf);
+
+    // 傳送到 server 端
+    sendto(socket_fd, buf, sizeof(buf), 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+    // 接收到 exit 指令就退出迴圈
+    if (strcmp(buf, "exit") == 0) 
+        break;
+
+    // 清空 message buffer
+    memset(buf, 0, sizeof(buf));
+    
+    // 等待 server 回傳轉成大寫的資料
+    if (recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr, &len) < 0) {
+        printf("recvfrom data from %s:%d, failed!", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+    }
+
+    // 顯示 server 地址，以及收到的資料
+    printf("get receive message from [%s:%d]: %s\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port), recvbuf);
+    // 清空 recv buffer
+    memset(recvbuf, 0, sizeof(recvbuf));
+}
+
+// 關閉 socket，並檢查是否關閉成功
+if (close(socket_fd) < 0) {
+        perror("close socket failed!");
+}
+```
+
+想了解細節，可參考 [完整程式碼](https://github.com/davidleitw/socket/tree/master/udp_example)
+
+在 `/udp_example` 下執行 `make` 即可。
+
+![](https://i.imgur.com/ui9e61W.png)
+
+![](https://i.imgur.com/hwQR7X9.png)
+
 
 ## localhost
 

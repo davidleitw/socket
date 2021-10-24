@@ -6,6 +6,8 @@
 
 我們在寫 `socket programming` 的時候會使用 `os` 提供的 `API`，來避免重複造輪子，今天的筆記會簡單介紹一下 `linux` 提供的 `socket API`，並用兩個簡單的範例介紹如何用 `tcp` 跟 `udp` 協定透過 `socket` 傳輸資料。
 
+![](https://i.imgur.com/gXp0tLh.png)
+
 ## socket
 
 ```c
@@ -153,7 +155,6 @@ bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr));
 
 一般來說，`address` 的實際數值都會用 `in_addr` 或者 `in_addr_t` 來表示
 其本質就是 `uint32_t`，用總共 32 個 `bits` 來表示一個 `IPv4` 的地址
-
 ```c
 typedef uint32_t in_addr_t; // 4 byte
 struct in_addr {
@@ -184,7 +185,6 @@ in_addr_t inet_addr(const char *cp)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
-
 **回傳**: 假如輸入的地址合法，會回傳 `uint32_t` 的數值，若不合法則回傳 `INADDR_NONE`
 
 > INADDR_NODE = 0xFFFFFFFF (32 個 bits 全部填一)
@@ -198,7 +198,6 @@ int inet_aton(const char *string, struct in_addr *addr)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
-
 **回傳**: 轉換成功，會回傳一個非零的值，失敗則會回傳 `0`
 
 [範例程式: inet_aton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_aton_ex.c)
@@ -210,7 +209,6 @@ char *inet_ntoa(struct in_addr)
 ```
 
 **功能**: 將 `in_addr` 轉換成字串形式的 `ip address`
-
 **回傳**: 如果沒有錯誤，會傳回成功轉換的字串，失敗時則會回傳 `NULL`
 
 [範例程式: inet_ntoa_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntoa_ex.c)
@@ -245,10 +243,68 @@ int main()
 ```
 
 [inet_pton man page](https://man7.org/linux/man-pages/man3/inet_pton.3.html)
-
 [inet_ntop man page](https://man7.org/linux/man-pages/man3/inet_ntop.3.html)
 
 [範例程式碼 inet_ntop_pton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntop_pton_ex.c)
+
+## bind
+
+上面介紹了創建一個 `socket` 的方式，也簡單的介紹了存放 `address` 的資料結構，一些常用的轉換函式。
+
+接著我們要介紹 `bind`，這個函式可以讓前面創建的 `socket` 實際綁定到本機的某個 `port` 上面，這樣子 `client` 端在送資料到某個 `port` 的時候，我們寫的 `server` 程式才可以在那個 `port` 上面運行，處理資料。
+
+```c
+int bind(int sockfd, struct sockaddr *addr, unsigned int addrlen)
+```
+
+### *sockfd*
+
+一開始呼叫 `socket()` 的回傳值
+
+### *addr*
+
+`sockaddr` 來描述 `bind` 要綁定的 `address` 還有 `port`。
+
+在先前的介紹有簡單提到，實際存放 `ip address` 的是 `sockaddr_in.sin_addr.s_addr`，如果今天不想綁定 `ip address`，而是單單想綁定某個 `port` 的時候，`s_addr` 就要設成 `INADDR_ANY`，通常會出現在你的主機有多個 `ip` 或者 `ip` 不是固定的情況。
+
+[INADDR_ANY 參考](https://blog.csdn.net/qq_26399665/article/details/52932755)
+
+### *addrlen*
+
+`addr` 結構的 `size`
+
+### *return*
+
+如果綁定成功就會回傳 `0`，失敗回傳 `-1`
+
+#### example
+```c
+// 建立 socket, 並且取得 socket_fd
+int socket_fd = socket(PF_INET , SOCK_DGRAM , 0);
+if (socket_fd < 0){
+    printf("Fail to create a socket.");
+}
+    
+// 地址資訊
+struct sockaddr_in serverAddr = {
+    .sin_family =AF_INET,             // Ipv4
+    .sin_addr.s_addr = INADDR_ANY,    // 沒有指定 ip address
+    .sin_port = htons(12000)          // 綁定 port 12000
+};
+
+// 綁定
+// 因為 bind 可以用在不同種類的 socket，所以是用 sockaddr 宣告
+// 我們用於網路的 address，是用 sockaddr_in 這個結構
+// 在填入的時候要進行強制轉型
+// 前面介紹 sockaddr_in 裡面 sin_zero 就是為了讓兩個結構有相同的 size
+if (bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+    perror("Bind socket failed!");
+    close(socket_fd);
+    exit(0);
+}
+
+printf("Server ready!\n");
+```
 
 ## localhost
 
@@ -270,3 +326,5 @@ int main()
 ### reference
 - [TCP Socket Programming 學習筆記](http://zake7749.github.io/2015/03/17/SocketProgramming/)
 - [地址轉換函數 inet_addr(), inet_aton(), inet_ntoa()和inet_ntop(), inet_pton()](http://haoyuanliu.github.io/2017/01/15/%E5%9C%B0%E5%9D%80%E8%BD%AC%E6%8D%A2%E5%87%BD%E6%95%B0inet-addr-inet-aton-inet-ntoa-%E5%92%8Cinet-ntop-inet-pton/)
+- [Beej's guide to networking programming](https://beej-zhtw-gitbook.netdpi.net/dao_du)
+- [UDP Server-Client implementation in C](https://www.geeksforgeeks.org/udp-server-client-implementation-c/)

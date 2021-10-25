@@ -10,9 +10,9 @@
 
 本文章所使用的環境
 
-***kernel***: `5.11.0-37-generic`
-***gcc version***: `gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0`
-***GNU Make***: `4.2.1`
+- ***kernel***: `5.11.0-37-generic
+- ***gcc version***: `gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0`
+- ***GNU Make***: `4.2.1`
 
 在寫 `socket` 相關的程式的時候，需要先
 
@@ -45,7 +45,7 @@ int socket(int domain, int type, int protocol)
 #### *protocol*
 設定通訊協定的號碼，通常在寫的時候會填入 `0`，`kernel` 會根據上面的兩個參數自動選擇合適的協定。
 
-[protocol man page](https://man7.org/linux/man-pages/man5/protocols.5.html#top_of_page)
+- [protocol man page](https://man7.org/linux/man-pages/man5/protocols.5.html#top_of_page)
 
 `/etc/protocols` 可以看到 `linux` 底下支援的協定
 
@@ -55,7 +55,9 @@ int socket(int domain, int type, int protocol)
 
 ### 檔案描述符是什麼?
 
-// TODO
+[Everything is a file](https://en.wikipedia.org/wiki/Everything_is_a_file)
+
+參考 [Linux 的 file descriptor 筆記 FD 真的好重要](https://kkc.github.io/2020/08/22/file-descriptor/)
 
 ### 建立 socket example
 
@@ -339,7 +341,7 @@ printf("Server ready!\n");
 
 ### sendto
 
-[sendto(2) - Linux man page](https://linux.die.net/man/2/sendto)
+- [sendto(2) - Linux man page](https://linux.die.net/man/2/sendto)
 
 ```c
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
@@ -377,7 +379,7 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 
 ### recvfrom
 
-[recvfrom(2) - Linux man page](https://linux.die.net/man/2/recvfrom)
+- [recvfrom(2) - Linux man page](https://linux.die.net/man/2/recvfrom)
 
 ```c
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
@@ -553,6 +555,8 @@ if (close(socket_fd) < 0) {
 recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr, &len)
 ```
 
+---
+
 ## TCP
 
 接著我們要談談如何用 `socket` 利用 `TCP` 協定來交換資料，首先要知道的是 `TCP` 屬於 **連線導向`Connection-oriented`** 的協定，跟 `UDP` 不同，在雙方交換資料之前必須經過先建立 `TCP connection`，下方是 `socket` 利用 `TCP` 協定溝通的流程圖，可以跟之前提到 `UDP` 的流程圖做一個簡單的對比。
@@ -585,7 +589,9 @@ recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr,
 > 所以 accept 根本不參與具體的 ***three-way handshake*** 流程
 
 參考資料 
+
 [socket listen() 分析](https://www.cnblogs.com/codestack/p/11099565.html)
+
 [從 Linux 原始碼看 socket accept](https://www.readfog.com/a/1638167776017354752)
 
 
@@ -596,6 +602,258 @@ recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr,
     - `accept`: 從 `complete connection queue` 中取出一個已連線的 `socket`
 - `client` 端
     - `connect`: 發起 `three-way handshake`，必須要等 `server` 端開始 `listen` 後才可以使用
+
+## `Client` 端: *connect*
+
+- [connect(2) Linux man page](https://man7.org/linux/man-pages/man2/connect.2.html)
+
+```c
+int connect(int sockfd, const struct sockaddr *addr,
+            socklen_t addrlen);
+```
+
+#### *sockfd* 
+
+一開始呼叫 `socket()` 的回傳值
+
+#### *addr*
+
+想要建立連線的 `server` 資料
+
+#### *addrlen*
+
+`addr` 結構的 `size`
+
+#### *return*
+
+錯誤時回傳 `-1`，並且設定 `errno`
+
+## `Server` 端: *listen*
+
+- [listen(2) - Linux man page](https://man7.org/linux/man-pages/man2/listen.2.html)
+
+```c
+int listen(int sockfd, int backlog);
+```
+
+#### *sockfd*
+
+一開始呼叫 `socket()` 的回傳值
+
+#### *backlog*
+
+允許進入 `queue` 的最大連線數量
+
+在 `server` 端還沒有 `accept` 之前，最多能允許幾個 `socket` 申請 `connect`
+
+> 詳細敘述可以參考 [man page](https://man7.org/linux/man-pages/man2/listen.2.html)
+
+#### *return*
+
+錯誤時回傳 `-1`，並且設定 `errno`
+
+## `Server` 端: *accept*
+
+- [accept(2) Linux man page](https://man7.org/linux/man-pages/man2/accept.2.html)
+
+```c
+int accept(int sockfd, struct sockaddr *restrict addr,
+           socklen_t *restrict addrlen);
+```
+
+#### *sockfd*
+
+`server` 端 `socket` 的檔案描述符
+
+#### *addr*
+
+建立 `TCP` 連線的 `Client` 端資料
+
+#### *addrlen* 
+
+`addr` 結構的 `size`
+
+#### *return*
+
+返回一個新的 `sock_fd`，專門跟請求連結的 `client` 互動
+
+### demo
+
+![](https://i.imgur.com/T35C7vs.png)
+
+#### server example
+
+```c
+#define serverPort 48763
+
+// message buffer
+char buf[1024] = {0};
+
+// 建立 socket
+int socket_fd = socket(PF_INET , SOCK_STREAM , 0);
+if (socket_fd < 0){
+    printf("Fail to create a socket.");
+}
+
+// server 地址
+struct sockaddr_in serverAddr = {
+    .sin_family = AF_INET,
+    .sin_addr.s_addr = INADDR_ANY,
+    .sin_port = htons(serverPort)
+};
+
+// 將建立的 socket 綁定到 serverAddr 指定的 port
+if (bind(socket_fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+    perror("Bind socket failed!");
+    close(socket_fd);
+    exit(0);
+
+// 初始化，準備接受 connect
+// backlog = 5，在 server accept 動作之前，最多允許五筆連線申請
+// 回傳 -1 代表 listen 發生錯誤
+if (listen(socket_fd, 5) == -1) {
+    printf("socket %d listen failed!\n", socket_fd);
+    close(socket_fd);
+    exit(0);
+}
+
+printf("server [%s:%d] --- ready\n", 
+        inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+
+while(1) {
+    int reply_sockfd;
+    struct sockaddr_in clientAddr;
+    int client_len = sizeof(clientAddr);
+
+    // 從 complete connection queue 中取出已連線的 socket
+    // 之後用 reply_sockfd 與 client 溝通
+    reply_sockfd = accept(socket_fd, (struct sockaddr *)&clientAddr, &client_len);
+    printf("Accept connect request from [%s:%d]\n", 
+            inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+    
+    // 不斷接收 client 資料
+    while (recv(reply_sockfd, buf, sizeof(buf), 0)) {
+        // 收到 exit 指令就離開迴圈
+        if (strcmp(buf, "exit") == 0) {
+            memset(buf, 0, sizeof(buf));
+            goto exit;
+        }
+
+        // 將收到的英文字母換成大寫
+        char *conv = convert(buf);
+
+        // 顯示資料來源，原本資料，以及修改後的資料
+        printf("get message from [%s:%d]: ",
+                inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+        printf("%s -> %s\n", buf, conv);
+
+        // 傳回 client 端
+        // 不需要填入 client 端的位置資訊，因為已經建立 TCP 連線
+        if (send(reply_sockfd, conv, sizeof(conv), 0) < 0) {
+            printf("send data to %s:%d, failed!\n", 
+                    inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+            memset(buf, 0, sizeof(buf));
+            free(conv);
+            goto exit;
+        }
+
+        // 清空 message buffer
+        memset(buf, 0, sizeof(buf));
+        free(conv);
+    }
+
+    // 關閉 reply socket，並檢查是否關閉成功
+    if (close(reply_sockfd) < 0) {
+        perror("close socket failed!");
+    }
+}
+```
+
+#### client example
+
+```c
+#define serverPort 48763
+
+ // message buffer
+char buf[1024] = {0};
+char recvbuf[1024] = {0};
+
+// 建立 socket
+int socket_fd = socket(PF_INET, SOCK_STREAM, 0);
+if (socket_fd < 0) {
+    printf("Create socket fail!\n");
+    return -1;
+}
+
+// server 地址
+struct sockaddr_in serverAddr = {
+    .sin_family = AF_INET,
+    .sin_addr.s_addr = inet_addr(serverIP),
+    .sin_port = htons(serverPort)
+};
+int len = sizeof(serverAddr);
+
+// 試圖連結 server，發起 tcp 連線
+// 回傳 -1 代表 server 可能還沒有開始 listen
+if (connect(socket_fd, (struct sockaddr *)&serverAddr, len) == -1) {
+    printf("Connect server failed!\n");
+    close(socket_fd);
+    exit(0);
+}
+
+printf("Connect server [%s:%d] success\n",
+            inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+
+while (1) {
+    // 輸入資料到 buffer
+    printf("Please input your message: ");
+    scanf("%s", buf);
+
+    // 傳送到 server 端
+    if (send(socket_fd, buf, sizeof(buf), 0) < 0) {
+        printf("send data to %s:%d, failed!\n", 
+                inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+        memset(buf, 0, sizeof(buf));
+        break;
+    }
+
+    // 接收到 exit 指令就退出迴圈
+    if (strcmp(buf, "exit") == 0)
+        break;
+
+    // 清空 message buffer
+    memset(buf, 0, sizeof(buf));
+
+    // 等待 server 回傳轉成大寫的資料
+    if (recv(socket_fd, recvbuf, sizeof(recvbuf), 0) < 0) {
+        printf("recv data from %s:%d, failed!\n", 
+                inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+        break;
+    }
+
+    // 顯示 server 地址，以及收到的資料
+    printf("get receive message from [%s:%d]: %s\n", 
+            inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port), recvbuf);
+    memset(recvbuf, 0, sizeof(recvbuf));
+}
+
+// 關閉 socket，並檢查是否關閉成功
+if (close(socket_fd) < 0) {
+    perror("close socket failed!");
+}
+```
+![](https://i.imgur.com/S5sMq9b.png)
+
+使用
+
+```bash
+netstat -a | grep 48763
+```
+
+查看是否建立連線
+
+![](https://i.imgur.com/hnhnqG9.png)
+
 
 
 ## localhost

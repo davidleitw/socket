@@ -67,7 +67,8 @@ int main()
         reply_sockfd = accept(socket_fd, (struct sockaddr *)&clientAddr, &client_len);
         printf("Accept connect request from [%s:%d]\n", 
                 inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-    
+        
+        // 不斷接收 client 資料
         while (recv(reply_sockfd, buf, sizeof(buf), 0)) {
             // 收到 exit 指令就離開迴圈
             if (strcmp(buf, "exit") == 0) {

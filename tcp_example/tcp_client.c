@@ -30,6 +30,8 @@ int main()
     };
     int len = sizeof(serverAddr);
 
+    // 試圖連結 server，發起 tcp 連線
+    // 回傳 -1 代表 server 可能還沒有開始 listen
     if (connect(socket_fd, (struct sockaddr *)&serverAddr, len) == -1) {
         printf("Connect server failed!\n");
         close(socket_fd);

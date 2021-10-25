@@ -87,7 +87,7 @@ int main()
             // 不需要填入 client 端的位置資訊，因為已經建立 TCP 連線
             if (send(reply_sockfd, conv, sizeof(conv), 0) < 0) {
                 printf("send data to %s:%d, failed!\n", 
-                    inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+                        inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
                 memset(buf, 0, sizeof(buf));
                 free(conv);
                 goto exit;

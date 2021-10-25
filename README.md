@@ -8,9 +8,16 @@
 
 ![](https://i.imgur.com/gXp0tLh.png)
 
+本文章所使用的環境
+
+***kernel***: `5.11.0-37-generic`
+***gcc version***: `gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0`
+***GNU Make***: `4.2.1`
+
 在寫 `socket` 相關的程式的時候，需要先
 
 ```c
+#include <arpa/inet.h>  // sockaddr 相關
 #include <sys/socket.h>
 ```
 
@@ -191,6 +198,7 @@ in_addr_t inet_addr(const char *cp)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
+
 **回傳**: 假如輸入的地址合法，會回傳 `uint32_t` 的數值，若不合法則回傳 `INADDR_NONE`
 
 > INADDR_NODE = 0xFFFFFFFF (32 個 bits 全部填一)
@@ -204,6 +212,7 @@ int inet_aton(const char *string, struct in_addr *addr)
 ```
 
 **功能**: 將字串轉換成數值表示的 `ip address`
+
 **回傳**: 轉換成功，會回傳一個非零的值，失敗則會回傳 `0`
 
 [範例程式: inet_aton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_aton_ex.c)
@@ -215,6 +224,7 @@ char *inet_ntoa(struct in_addr)
 ```
 
 **功能**: 將 `in_addr` 轉換成字串形式的 `ip address`
+
 **回傳**: 如果沒有錯誤，會傳回成功轉換的字串，失敗時則會回傳 `NULL`
 
 [範例程式: inet_ntoa_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntoa_ex.c)
@@ -252,6 +262,8 @@ int main()
 [inet_ntop man page](https://man7.org/linux/man-pages/man3/inet_ntop.3.html)
 
 [範例程式碼 inet_ntop_pton_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntop_pton_ex.c)
+
+轉換相關的 `function` 我每個都寫了一個簡單的範例，可以參考 [完整程式碼](https://github.com/davidleitw/socket/tree/master/address)
 
 ## bind
 
@@ -421,7 +433,7 @@ if (socket_fd < 0){
 
 // server 地址
 struct sockaddr_in serverAddr = {
-    .sin_family =AF_INET           
+    .sin_family = AF_INET,           
     .sin_addr.s_addr = INADDR_ANY,
     .sin_port = htons(serverPort)
 };
@@ -531,12 +543,68 @@ if (close(socket_fd) < 0) {
 
 ![](https://i.imgur.com/hwQR7X9.png)
 
+---
+
+不知道各位有沒有注意到，我們正式使用 `socket` 的 `api` 時，關於位置的部份都是使用 `sockaddr` 當傳入的參數，我們在網路領域用的 `sockaddr_in` 在傳入時都要再強制轉型一次。
+
+因為 `socket` 本身除了網路通訊之外有很多別的地方也會使用到，為了統一 `api` 操作，所以函式一律是用 `sockaddr` 作為參數，這樣一來各種不同的 `sockaddr_xx` 系列就可以用同一組 `api`，只需要額外轉型即可。
+
+```c
+recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr, &len)
+```
+
+## TCP
+
+接著我們要談談如何用 `socket` 利用 `TCP` 協定來交換資料，首先要知道的是 `TCP` 屬於 **連線導向`Connection-oriented`** 的協定，跟 `UDP` 不同，在雙方交換資料之前必須經過先建立 `TCP connection`，下方是 `socket` 利用 `TCP` 協定溝通的流程圖，可以跟之前提到 `UDP` 的流程圖做一個簡單的對比。
+
+![](https://i.imgur.com/FDOIMj9.png)
+
+
+先從 `server` 端來解說，跟 `UDP` 相比，可以看到 `bind` 完之後多了 `listen` 跟 `accept` 兩個動作。
+
+當 `server` 端創立的 `socket` 成功 `bind` 某個 `port` 之後，他會開始 `listen` 有沒有人申請連線，在 `listen` 這個 `function` 還可以設定 `backlog`，這個參數可以決定今天我們的 `socket` 最多能同時處理的連線要求，避免同時太多人提出連線需求。
+
+> *backlog*: 在 `server` 端 `accept` 之前最多的排隊數量
+
+
+
+`TCP` 協定在建立連線時會經過 **three-way handshake** 流程，下圖是每個流程與 `socket api` 的對應圖。
+
+![](https://i.imgur.com/IK8laxq.png)
+
+
+當 `client` 呼叫 `connect` 時才會開始發起 **three-way handshake**，當 `connect` 結束時，`client` 與 `server` 基本已經完成了整個流程。
+
+那 `server` 端的 `accept` 具體只是從 `server socket` 維護的 `completed connection queue` 中取出一個已完成交握過程的 `socket`。
+
+在 `kernel` 中每個 `socket` 都會維護兩個不同的 `queue`:
+
+- 未完成連線佇列 (***incomplete connection queue***): FIFO with syn_rcvd state
+- 已完成連線佇列 (***complete connection queue***): FIFO with established state
+
+> 所以 accept 根本不參與具體的 ***three-way handshake*** 流程
+
+參考資料 
+[socket listen() 分析](https://www.cnblogs.com/codestack/p/11099565.html)
+[從 Linux 原始碼看 socket accept](https://www.readfog.com/a/1638167776017354752)
+
+
+**總結一下**
+
+- `server` 端
+    - `listen`: 初始化佇列，準備接受 `connect`
+    - `accept`: 從 `complete connection queue` 中取出一個已連線的 `socket`
+- `client` 端
+    - `connect`: 發起 `three-way handshake`，必須要等 `server` 端開始 `listen` 後才可以使用
+
 
 ## localhost
 
 本地端測試網路程式的時候常會使用的地址
 
 可以參考 [wiki](https://zh.wikipedia.org/wiki/Localhost)
+
+
 
 ### 參考書籍
 

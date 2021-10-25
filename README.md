@@ -870,6 +870,8 @@ netstat -a | grep 48763
 
 ### 參考書籍
 
+![](https://i.imgur.com/Fo0F9ul.png)
+
 #### UNIX Network Programming
 
 ![](https://i.imgur.com/XDmFV5u.png)

@@ -10,7 +10,7 @@
 
 本文章所使用的環境
 
-- ***kernel***: `5.11.0-37-generic
+- ***kernel***: `5.11.0-37-generic`
 - ***gcc version***: `gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0`
 - ***GNU Make***: `4.2.1`
 
@@ -55,9 +55,11 @@ int socket(int domain, int type, int protocol)
 
 ### 檔案描述符是什麼?
 
-[Everything is a file](https://en.wikipedia.org/wiki/Everything_is_a_file)
 
-參考 [Linux 的 file descriptor 筆記 FD 真的好重要](https://kkc.github.io/2020/08/22/file-descriptor/)
+參考資料
+- [Everything is a file](https://en.wikipedia.org/wiki/Everything_is_a_file)
+- [Linux 的 file descriptor 筆記 FD 真的好重要](https://kkc.github.io/2020/08/22/file-descriptor/)
+- [Linux 下 socket 通訊所用的 sockfd 怎麼來的](https://www.cnblogs.com/chorm590/p/12745824.html)
 
 ### 建立 socket example
 
@@ -102,8 +104,8 @@ struct sockaddr {
 
 // 上面的結構把巨集展開後，等價於下方的資料結構
 struct sockaddr {
-    unsigned short int sa_family;
-    char sa_data[14];
+    unsigned short int sa_family; // 2 bytes
+    char sa_data[14];             // 14 bytes
 };
 ```
 
@@ -131,10 +133,10 @@ struct sockaddr_in {
 
 struct sockaddr_in {
     // sa_family_t sin_family
-    unsigned short int sin_family;
-    unsigned short int sin_port;
-    struct in_addr sin_addr;
-    unsigned char sin_zero[8]; // 填充，讓 sockaddr_in 的 size 跟 sockaddr 相同
+    unsigned short int sin_family; // 2 bytes
+    unsigned short int sin_port;   // 2 bytes
+    struct in_addr sin_addr;       // 4 bytes
+    unsigned char sin_zero[8];     // 填充，讓 sockaddr_in 的 size 跟 sockaddr 相同
 };
 ```
 
@@ -230,6 +232,8 @@ char *inet_ntoa(struct in_addr)
 **回傳**: 如果沒有錯誤，會傳回成功轉換的字串，失敗時則會回傳 `NULL`
 
 [範例程式: inet_ntoa_ex.c](https://github.com/davidleitw/socket/blob/master/address/inet_ntoa_ex.c)
+
+> [可怕的坑](https://blog.hubert.tw/2009/04/18/%E5%BE%9E-inet_ntoa-%E7%9C%8B-thread-safe-%E7%9A%84-api/)
 
 ### inet_pton & inet_ntop
 

@@ -47,7 +47,8 @@ int main()
 
         // 等待 server 回傳轉成大寫的資料
         if (recvfrom(socket_fd, recvbuf, sizeof(recvbuf), 0, (struct sockaddr *)&serverAddr, &len) < 0) {
-            printf("recvfrom data from %s:%d, failed!", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+            printf("recvfrom data from %s:%d, failed!\n", inet_ntoa(serverAddr.sin_addr), ntohs(serverAddr.sin_port));
+            break;
         }
         
         // 顯示 server 地址，以及收到的資料

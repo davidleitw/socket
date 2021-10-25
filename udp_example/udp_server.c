@@ -34,7 +34,7 @@ int main(int argc , char *argv[])
     
     // server 地址
     struct sockaddr_in serverAddr = {
-        .sin_family =AF_INET,
+        .sin_family = AF_INET,
         .sin_addr.s_addr = INADDR_ANY,
         .sin_port = htons(serverPort)
     };

@@ -277,6 +277,8 @@ int main()
 
 接著我們要介紹 `bind`，這個函式可以讓前面創建的 `socket` 實際綁定到本機的某個 `port` 上面，這樣子 `client` 端在送資料到某個 `port` 的時候，我們寫的 `server` 程式才可以在那個 `port` 上面運行，處理資料。
 
+> attaches a local address to a socket.
+
 ```c
 int bind(int sockfd, struct sockaddr *addr, unsigned int addrlen)
 ```

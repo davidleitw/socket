@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -20,7 +21,7 @@ char *convert(char *src) {
     if (iter == NULL) return iter;
 
     while (*iter) {
-        *it++ = *iter++ & ~0x20;
+        *it++ = toupper(*iter++);
     }
     return result;
 }
@@ -35,6 +36,7 @@ void* clientSocket(void *param){
     struct client_info * info = param;
     // 不斷接收 client 資料
     while (recv(info->sockfd, buf, sizeof(buf), 0)) {
+        
         // 收到 exit 指令就離開迴圈
         if (strcmp(buf, "exit") == 0) {
             memset(buf, 0, sizeof(buf));
@@ -42,13 +44,14 @@ void* clientSocket(void *param){
         }
 
         // 將收到的英文字母換成大寫
-        char *conv = convert(buf);
+        char *conv = malloc(sizeof(buf));
+        memcpy(conv, convert(buf), sizeof(buf));
 
         // 顯示資料來源，原本資料，以及修改後的資料
         printf("get message from [%s:%d]: ",
                 inet_ntoa(info->clientAddr.sin_addr), ntohs(info->clientAddr.sin_port));
         printf("%s -> %s\n", buf, conv);
-        
+
         // 傳回 client 端
         // 不需要填入 client 端的位置資訊，因為已經建立 TCP 連線
         if (send(info->sockfd, conv, sizeof(conv), 0) < 0) {
@@ -67,7 +70,11 @@ void* clientSocket(void *param){
     // 關閉 reply socket，並檢查是否關閉成功
     if (close(info->sockfd) < 0) {
         perror("close socket failed!");
+    }else{
+        printf("Socket closed from %s:%d success!\n", 
+            inet_ntoa(info->clientAddr.sin_addr), ntohs(info->clientAddr.sin_port));
     }
+
 }
 
 int main() 

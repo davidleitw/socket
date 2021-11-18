@@ -1,1 +1,5 @@
+# vscode settings
 /.vscode
+
+# error logs
+*.log
